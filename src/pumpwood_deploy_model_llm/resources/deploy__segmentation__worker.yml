@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pumpwood-llm-model-extraction-worker
+  name: pumpwood-models-llm-segmentation-worker
 spec:
   replicas: {replicas}
   selector:
     matchLabels:
       type: worker
-      endpoint: pumpwood-llm-model-extraction-worker
-      function: extraction
+      endpoint: pumpwood-models-llm-segmentation-worker
+      function: segmentation
   template:
     metadata:
       labels:
           type: worker
-          endpoint: pumpwood-llm-model-extraction-worker
-          function: extraction
+          endpoint: pumpwood-models-llm-segmentation-worker
+          function: segmentation
     spec:
       imagePullSecrets:
         - name: dockercfg
@@ -32,8 +32,8 @@ spec:
                 values:
                 - system
       containers:
-      - name: pumpwood-llm-model-extraction-worker
-        image: {repository}/pumpwood-llm-model-extraction-worker:{version}
+      - name: pumpwood-models-llm-segmentation-worker
+        image: {repository}/pumpwood-models-llm-worker-segment:{version}
         imagePullPolicy: IfNotPresent
         resources:
           requests:
@@ -50,11 +50,12 @@ spec:
         - name: DEBUG
           value: "{debug}"
 
-        # HASH_SALT
+        ###################
+        # DEFAULT CONFIGS #
         - name: HASH_SALT
           valueFrom:
             secretKeyRef:
-              name: hash-salt
+              name: general-secrets
               key: hash_salt
 
         # Database
@@ -69,10 +70,10 @@ spec:
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: pumpwood-llm-model-extraction-worker
+              name: pumpwood-model-llm-secrets
               key: db_password
 
-        #RABBITMQ
+        # RABBITMQ ETL
         - name: RABBITMQ_HOST
           value: "rabbitmq-main"
         - name: RABBITMQ_PASSWORD
@@ -81,52 +82,17 @@ spec:
               name: rabbitmq-main-secrets
               key: password
 
-        #Microsservice
+        # Microsservice
         - name: MICROSERVICE_PASSWORD
           valueFrom:
               secretKeyRef:
-                name: pumpwood-llm-model-extraction-worker
-                key: microservice_password
+                name: microservice-model-secrets
+                key: password
 
         # Limit process
-        - name: N_PARALLEL
+        - name: PUMPWOOD_COMUNICATION__N_PARALLEL
           value: '{n_parallel}'
-        - name: CHUNK_SIZE
+        - name: PUMPWOOD_COMUNICATION__PARALLEL_CHUNK_SIZE
           value: '{chunk_size}'
         - name: QUERY_LIMIT
           value: '{query_limit}'
-
-        ###########
-        # STORAGE #
-        - name: STORAGE_BUCKET_NAME
-          value: {bucket_name}
-        - name: STORAGE_TYPE
-          valueFrom:
-            configMapKeyRef:
-              name: storage
-              key: storage_type
-
-        # GCP
-        - name: GOOGLE_APPLICATION_CREDENTIALS
-          value: "/etc/secrets/key-storage.json"
-
-        # AZURE
-        - name: AZURE_STORAGE_CONNECTION_STRING
-          valueFrom:
-              secretKeyRef:
-                name: azure--storage-key
-                key: azure_storage_connection_string
-
-        # AWS
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-              secretKeyRef:
-                name: aws--storage-key
-                key: aws_access_key_id
-                optional: true
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-              secretKeyRef:
-                name: aws--storage-key
-                key: aws_secret_access_key
-                optional: true

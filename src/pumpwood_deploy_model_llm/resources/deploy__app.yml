@@ -1,19 +1,19 @@
 apiVersion : "apps/v1"
 kind: Deployment
 metadata:
-  name: pumpwood-llm-model-app
+  name: pumpwood-models-llm-app
 spec:
   replicas: {replicas}
   selector:
     matchLabels:
       type: app
-      endpoint: pumpwood-llm-model-app
+      endpoint: pumpwood-models-llm-app
       function: model
   template:
     metadata:
       labels:
         type: app
-        endpoint: pumpwood-llm-model-app
+        endpoint: pumpwood-models-llm-app
         function: model
     spec:
       imagePullSecrets:
@@ -33,7 +33,7 @@ spec:
                 - system
       containers:
       - name: pumpwood-llm-model
-        image: {repository}/pumpwood-llm-model-app:{version}
+        image: {repository}/pumpwood-models-llm-app:{version}
         imagePullPolicy: IfNotPresent
         resources:
           requests:
@@ -46,24 +46,32 @@ spec:
           - name: gcp--storage-key
             readOnly: true
             mountPath: /etc/secrets
+        ports:
+        - containerPort: 5000
         readinessProbe:
           httpGet:
-            path: /health-check/pumpwood-llm-model-app/
+            path: /health-check/pumpwood-models-llm-app/
             port: 5000
         env:
         - name: DEBUG
           value: "{debug}"
         - name: WORKERS_TIMEOUT
           value: "{workers_timeout}"
-        - name: N_WORKERS
+        - name: GRANIAN_WORKERS
           value: "{n_workers}"
 
-        # HASH_SALT
+        ###################
+        # DEFAULT CONFIGS #
         - name: HASH_SALT
           valueFrom:
             secretKeyRef:
-              name: hash-salt
+              name: general-secrets
               key: hash_salt
+        - name: PUMPWOOD_COMUNICATION__CRYPTO_FERNET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: general-secrets
+              key: crypto_fernet_key
 
         # Database
         - name: DB_USERNAME
@@ -77,7 +85,7 @@ spec:
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: pumpwood-llm-model-app
+              name: pumpwood-model-llm-secrets
               key: db_password
 
         # RABBITMQ ETL
@@ -93,13 +101,16 @@ spec:
         - name: MICROSERVICE_PASSWORD
           valueFrom:
               secretKeyRef:
-                name: pumpwood-llm-model-app
-                key: microservice_password
+                name: microservice-model-secrets
+                key: password
 
         ###########
         # STORAGE #
         - name: STORAGE_BUCKET_NAME
-          value: {bucket_name}
+          valueFrom:
+            configMapKeyRef:
+              name: storage
+              key: bucket_name
         - name: STORAGE_TYPE
           valueFrom:
             configMapKeyRef:
@@ -109,37 +120,33 @@ spec:
         # GCP
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: "/etc/secrets/key-storage.json"
-
         # AZURE
         - name: AZURE_STORAGE_CONNECTION_STRING
           valueFrom:
-              secretKeyRef:
-                name: azure--storage-key
-                key: azure_storage_connection_string
-
+            secretKeyRef:
+              name: azure--storage-key
+              key: azure_storage_connection_string
         # AWS
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
-              secretKeyRef:
-                name: aws--storage-key
-                key: aws_access_key_id
-                optional: true
+            secretKeyRef:
+              name: aws--storage-key
+              key: aws_access_key_id
+              optional: true
         - name: AWS_SECRET_ACCESS_KEY
           valueFrom:
-              secretKeyRef:
-                name: aws--storage-key
-                key: aws_secret_access_key
-                optional: true
-        ports:
-        - containerPort: 5000
+            secretKeyRef:
+              name: aws--storage-key
+              key: aws_secret_access_key
+              optional: true
 ---
 apiVersion : "v1"
 kind: Service
 metadata:
-  name: pumpwood-llm-model-app
+  name: pumpwood-models-llm-app
   labels:
     type: app
-    endpoint: pumpwood-llm-model-app
+    endpoint: pumpwood-models-llm-app
     function: model
 spec:
   type: ClusterIP
@@ -148,5 +155,5 @@ spec:
       targetPort: 5000
   selector:
     type: app
-    endpoint: pumpwood-llm-model-app
+    endpoint: pumpwood-models-llm-app
     function: model
