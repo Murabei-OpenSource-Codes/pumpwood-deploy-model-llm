@@ -1,6 +1,6 @@
 [project]
 name = "pumpwood-deploy-model-llm"
-version = "0.0.1-b.0"
+version = "0.0.2-b.0"
 description = "Package for deploy LLM Model Service"
 readme = "README.md"
 requires-python = ">=3.6"
